@@ -1,72 +1,36 @@
-from compute_score_new import compute_scores, get_all_gold_answers, get_all_pred_answers
-from clean_results import clean_results 
+from compute_score import compute_scores, get_all_gold_answers, get_all_pred_answers
+import clean_results
 import argparse
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import time
 from concurrent.futures import ProcessPoolExecutor
+from itertools import repeat
+from matplotlib import pyplot as plt
+import os
 
-def find_threshold(
-    gold_file: str,
-    prediction_file: str,
-    limit_num_wrong_answers: int= None, 
-):
-    thresholds = np.linspace(0.001, 1, 1000)
-    threshold_candidate = 0
-    max_score = {'position_score': 0}
-    all_gold_answers, all_questions = get_all_gold_answers(gold_file)
-    df = pd.read_json(prediction_file, lines=True)
-
-    def task(confidence_threshold):
-        print(confidence_threshold)
-        # start = time.time()
-        df_tmp = clean_results(df, confidence_threshold)
-        # end = time.time()
-        # print(end - start)
-
-        # start = time.time()
-        all_pred_answers = get_all_pred_answers(df=df_tmp)
-        # end = time.time()
-        # print(end - start)
-
-        scores = compute_scores(
-            all_gold_answers,
-            all_questions,
-            all_pred_answers,
-            limit_num_wrong_answers=limit_num_wrong_answers,
-        )
-        return scores
+def task(
+        df: pd.DataFrame,
+        confidence_threshold: float,
+        all_gold_answers: dict,
+        all_questions: dict,
+        limit_num_wrong_answers: int= None,
+    ):
     
-    print(list(thresholds))
-    with ProcessPoolExecutor(max_workers=8) as executor:
-        executor.map(task, list(thresholds))
-    # print(results)
+    # しきい値ごとのデータを作成
+    df_tmp = clean_results.clean_results(df, confidence_threshold)
 
-    # for confidence_threshold in tqdm(thresholds):
-    #     # start = time.time()
-    #     df_tmp = clean_results(df, confidence_threshold)
-    #     # end = time.time()
-    #     # print(end - start)
+    all_pred_answers = get_all_pred_answers(df=df_tmp)
 
-    #     # start = time.time()
-    #     all_pred_answers = get_all_pred_answers(df=df_tmp)
-    #     # end = time.time()
-    #     # print(end - start)
-
-    #     scores = compute_scores(
-    #         all_gold_answers,
-    #         all_questions,
-    #         all_pred_answers,
-    #         limit_num_wrong_answers=limit_num_wrong_answers,
-    #     )
-    #     if scores['position_score'] > max_score['position_score']:
-    #         max_score = scores
-    #         threshold_candidate = confidence_threshold
-
-    return threshold_candidate, max_score
-        # score = compute_scores(gold_file, prediction_file, limit_num_wrong_answers=limit_num_wrong_answers, confidence_threshold=confidence_threshold)
-    
+    scores = compute_scores(
+        all_gold_answers,
+        all_questions,
+        all_pred_answers,
+        limit_num_wrong_answers=limit_num_wrong_answers,
+    )
+    scores['confidence_threshold'] = confidence_threshold
+    return scores
 
 
 if __name__ == "__main__":
@@ -76,13 +40,61 @@ if __name__ == "__main__":
     parser.add_argument("--limit_num_wrong_answers", type=int)
     args = parser.parse_args()
 
-    final_threshold, scores = find_threshold(args.gold_file, args.prediction_file, limit_num_wrong_answers=args.limit_num_wrong_answers)
-    print(final_threshold)
-    print("num_questions: {}".format(scores["num_questions"]))
-    print("num_correct: {}".format(scores["num_correct"]))
-    print("num_missed: {}".format(scores["num_missed"]))
-    print("num_failed: {}".format(scores["num_failed"]))
-    print("accuracy: {:.1%}".format(scores["accuracy"]))
-    print("accuracy_score: {:.3f}".format(scores["accuracy_score"]))
-    print("position_score: {:.3f}".format(scores["position_score"]))
-    print("total_score: {:.3f}".format(scores["total_score"]))
+
+    score_output_file = args.prediction_file.replace('.jsonl', '_score.jsonl')
+    if os.path.exists(score_output_file):
+        df = pd.read_json(score_output_file, lines=True)
+    else:
+        thresholds = np.linspace(0.001, 1, 1000)
+        threshold_candidate = 0
+        max_score = {'position_score': 0}
+        all_gold_answers, all_questions = get_all_gold_answers(args.gold_file)
+        df = pd.read_json(args.prediction_file, lines=True)
+
+        with ProcessPoolExecutor() as executor:
+            results = list(tqdm(executor.map(task, 
+                repeat(df),
+                list(thresholds),
+                repeat(all_gold_answers),
+                repeat(all_questions),
+                repeat(args.limit_num_wrong_answers)),
+                total=len(thresholds))
+            )
+        df = pd.DataFrame(results)
+        df.to_json(args.prediction_file.replace('.jsonl', '_score.jsonl'), orient='records', lines=True, force_ascii=False)
+    
+    print(df)
+    
+    thresholds = df['confidence_threshold'].values
+    accuracy_score = df['accuracy_score'].values
+    position_score = df['position_score'].values
+    total_score = df['total_score'].values
+
+    accuracy_max_idx = df['accuracy_score'].idxmax()
+    position_max_idx = df['position_score'].idxmax()
+    total_max_idx = df['total_score'].idxmax()
+
+    colors = ['red', 'green', 'blue']
+    plt.plot(thresholds, accuracy_score, label='accuracy_score', color=colors[0])
+    plt.text(x=thresholds[accuracy_max_idx], y=accuracy_score[accuracy_max_idx], s=f"({thresholds[accuracy_max_idx]:.3f}, {accuracy_score[accuracy_max_idx]:.3f})", color=colors[0])
+
+    plt.plot(thresholds, position_score, label='position_score', color=colors[1])
+    plt.text(x=thresholds[position_max_idx], y=position_score[position_max_idx], s=f"({thresholds[position_max_idx]:.3f}, {position_score[position_max_idx]:.3f})", color=colors[1])
+
+    plt.plot(thresholds, total_score, label='total_score', color=colors[2])
+    plt.text(x=thresholds[total_max_idx], y=total_score[total_max_idx], s=f"({thresholds[total_max_idx]:.3f}, {total_score[total_max_idx]:.3f})", color=colors[2])
+
+    plt.xlabel('confidence_threshold')
+    plt.ylabel('score')
+    plt.legend()
+    plt.savefig(args.prediction_file.replace('.jsonl', '_score.png'))
+
+    report_outline = [
+        ('accuracy_score', accuracy_max_idx),
+        ('position_score', position_max_idx),
+        ('total_score', total_max_idx),
+    ]
+
+    for label, confidence in report_outline:
+        print("\n------max_" + label + "-----")
+        print(df.iloc[confidence])

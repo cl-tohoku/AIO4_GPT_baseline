@@ -1,6 +1,5 @@
 import argparse
 import pandas as pd
-from tqdm import tqdm
 
 
 def main(args: argparse.Namespace):
@@ -17,7 +16,7 @@ def main(args: argparse.Namespace):
 
 
     df_data = []
-    for _, row in tqdm(df_original.iterrows()):
+    for _, row in df_original.iterrows():
         qid = row['qid']
         question = row['question']
         answers = row['answers']
@@ -43,9 +42,11 @@ def main(args: argparse.Namespace):
             return row['question'] + ' 答えは「'
         else:
             return row['question'] + '...? 答えは「'
-        
+
     df['question'] = df.apply(format_question, axis=1)
+
     df = df.drop(columns=['index'])
+
     df.to_json(args.original_path.replace('.jsonl', f'_{args.n_samples}_processed.jsonl'), orient='records', lines=True, force_ascii=False)
     
 
