@@ -1,0 +1,7 @@
+hydra-core==1.3.2
+transformers==4.30.0
+protobuf==3.20.3
+accelerate==0.19.0
+pandas
+sentencepiece
+pandarallel

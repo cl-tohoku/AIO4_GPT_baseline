@@ -1,0 +1,40 @@
+name: open-calm-1b
+seed: 42
+huggingface_path: cyberagent/open-calm-1b
+confidence_threshold: 0.7643123
+batch_size: 16
+evaluation_params:
+  output_scores: true
+  return_dict_in_generate: true
+  do_sample: false
+  max_new_tokens: 50
+  num_beams:  5 # beam-search if >2
+  num_return_sequences: 1 # need to be <= num_beams
+device_map: 
+  gpt_neox.embed_in: 0
+  gpt_neox.layers.0: 1
+  gpt_neox.layers.1: 1
+  gpt_neox.layers.2: 1
+  gpt_neox.layers.3: 1
+  gpt_neox.layers.4: 1
+  gpt_neox.layers.5: 1
+  gpt_neox.layers.6: 1
+  gpt_neox.layers.7: 1
+  gpt_neox.layers.8: 1
+  gpt_neox.layers.9: 1
+  gpt_neox.layers.10: 1
+  gpt_neox.layers.11: 1
+  gpt_neox.layers.12: 1
+  gpt_neox.layers.13: 1
+  gpt_neox.layers.14: 1
+  gpt_neox.layers.15: 1
+  gpt_neox.layers.16: 1
+  gpt_neox.layers.17: 1
+  gpt_neox.layers.18: 1
+  gpt_neox.layers.19: 1
+  gpt_neox.layers.20: 1
+  gpt_neox.layers.21: 1
+  gpt_neox.layers.22: 1
+  gpt_neox.layers.23: 1
+  gpt_neox.final_layer_norm: 1 
+  embed_out: 1

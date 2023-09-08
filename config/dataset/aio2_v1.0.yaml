@@ -1,0 +1,4 @@
+name: aio2_v1.0
+phase: train
+seed: 42
+train_path: datasets/aio2/aio_02_train_4000_processed.jsonl

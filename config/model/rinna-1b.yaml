@@ -1,0 +1,42 @@
+name: rinna-1b
+seed: 42
+huggingface_path: rinna/japanese-gpt-1b
+confidence_threshold: 0.8739135913591359
+batch_size: 8
+evaluation_params:
+  output_scores: true
+  return_dict_in_generate: true
+  do_sample: false
+  max_new_tokens: 50
+  num_beams:  5 # beam-search if >2
+  num_return_sequences: 1 # need to be <= num_beams
+device_map:
+  transformer.wte: 0
+  lm_head: 0
+  transformer.wpe: 0
+  transformer.drop: 0
+  transformer.h.0: 1
+  transformer.h.1: 1
+  transformer.h.2: 1
+  transformer.h.3: 1
+  transformer.h.4: 1
+  transformer.h.5: 1
+  transformer.h.6: 1
+  transformer.h.7: 1
+  transformer.h.8: 1
+  transformer.h.9: 1
+  transformer.h.10: 1
+  transformer.h.11: 1
+  transformer.h.12: 1
+  transformer.h.13: 1
+  transformer.h.14: 1
+  transformer.h.15: 1
+  transformer.h.16: 1
+  transformer.h.17: 1
+  transformer.h.18: 1
+  transformer.h.19: 1
+  transformer.h.20: 1
+  transformer.h.21: 1
+  transformer.h.22: 1
+  transformer.h.23: 1
+  transformer.ln_f: 1
