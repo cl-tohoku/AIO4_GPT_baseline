@@ -58,8 +58,12 @@ python main.py model=rinna-1b model.confidence_threshold=0.865
 | model | threshold | accuracy score | position score | total score|
 | -  | -| -| -|  -- |
 | rinna-1b| 0.865 | 166 | 15.348 | 181.348 |
-| rinna-1b| 0.811 | 145 | 29.599 | 174.599 |
 | open-calm-1b| 0.781 | 80 | 2.149 | 82.149 |
+
+##### 参考
+| model | threshold | accuracy score | position score | total score|
+| -  | -| -| -|  -- |
+| rinna-1b| 0.811 | 145 | 29.599 | 174.599 |
 | open-calm-1b| 0.625 | 29 | 7.736 | 36.736 |
 
 
@@ -76,5 +80,5 @@ python main.py model=rinna-1b model.confidence_threshold=0.865
 ### 2.2. しきい値を変えた結果を出力
 例: 
 ```
-python clean_results.py --prediction_file outputs/2023-08-31/12-31-02/dev_unlabeled.jsonl --confidence_threshold 0.8739135913591359
+python clean_results.py --prediction_file outputs/2023-08-31/12-31-02/dev_unlabeled.jsonl --confidence_threshold 0.811
 ```
