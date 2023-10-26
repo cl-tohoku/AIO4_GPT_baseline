@@ -1,7 +1,7 @@
 name: rinna-1b
 seed: 42
 huggingface_path: rinna/japanese-gpt-1b
-confidence_threshold: 0.8739135913591359
+confidence_threshold: 0.865
 batch_size: 8
 evaluation_params:
   output_scores: true
