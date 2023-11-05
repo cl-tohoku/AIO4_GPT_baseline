@@ -16,8 +16,10 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
 # self-made logger
-from mylogger import init_logging
-from clean_results import clean_results
+from modules.mylogger import init_logging
+from modules.clean_results import clean_results
+from modules.models import load_model
+from modules.model_pipeline import GPTPipeline
 
 
 
@@ -39,6 +41,7 @@ def main(cfg: DictConfig) -> None:
     dataset = load_dataset(cfg, logger)
     logger.info('dataset loaded')
 
+
     result_df = run_inference(
         cfg,
         logger,
@@ -46,6 +49,7 @@ def main(cfg: DictConfig) -> None:
         tokenizer=tokenizer,
         dataset=dataset,
     )
+    result_df = result_df.sort_values(by=['qid', 'position'], ascending=True)
     result_df.to_json(result_jsonl_path, orient='records', lines=True, force_ascii=False)
     
     cleaned_jsonl_path = result_jsonl_path.replace('.jsonl', '_cleaned.jsonl')
@@ -54,27 +58,6 @@ def main(cfg: DictConfig) -> None:
 
     logger.info(cleaned_jsonl_path)
 
-
-def load_model(cfg: DictConfig, logger) -> (AutoModelForCausalLM, AutoTokenizer):
-    if 'device_map' in cfg.model:
-        device_map = cfg.model.device_map
-    else:
-        device_map = 'auto'
-    
-    logger.info("loading model and tokenizer")
-    tokenizer = AutoTokenizer.from_pretrained(
-        cfg.model.huggingface_path,
-        padding_side='left',
-        )
-    logger.info("tokenizer loaded")
-    model = AutoModelForCausalLM.from_pretrained(
-        cfg.model.huggingface_path,
-        device_map=device_map,
-        torch_dtype=torch.float16
-        )
-    logger.info("model loaded")
-    print(model.hf_device_map)
-    return model, tokenizer
 
 class BuzzerQuizDataset(Dataset):
     def __init__(self, *, question_id, position, question):
@@ -98,6 +81,8 @@ def load_dataset(cfg: DictConfig, logger) -> BuzzerQuizDataset:
     # make sure file is in jsonl format
     assert path.endswith('.jsonl'), 'dataset file must be in jsonl format'
     df = pd.read_json(path, lines=True)
+    # df = df.head(200)
+    df = df.sort_values(by='position', ascending=False) # for batch inference
     print(df.head())
     
     columns = df.columns
@@ -121,55 +106,65 @@ def run_inference(
         tokenizer: AutoTokenizer,
         dataset: BuzzerQuizDataset,
     ):
-    generated_answers_df = pd.DataFrame(columns=['qid','position', 'question', 'prediction', 'confidence'])
+    generated_answers_dfs = [] 
     buzzer_quiz_loader = DataLoader(dataset, batch_size=cfg.model.batch_size, shuffle=False, num_workers=0)
+
+    pipeline = GPTPipeline(
+        model=model,
+        tokenizer=tokenizer,
+        generation_params=cfg.model.evaluation_params,
+    )
 
     model.eval()
     for batch_id, batch in enumerate(tqdm(buzzer_quiz_loader)):
-        qid, position, question = batch
+        qid, position, questions = batch
 
-        inputs = tokenizer.batch_encode_plus(
-            question, 
-            return_tensors="pt", 
-            padding=True, 
-            add_special_tokens=False
-        )
-        inputs = inputs.to('cuda:0')
+        inference_result = pipeline.predict_answer(
+            questions, prompt_engineered=True)
+
+        # inputs = tokenizer.batch_encode_plus(
+        #     question, 
+        #     return_tensors="pt", 
+        #     padding=True, 
+        #     add_special_tokens=False
+        # )
+        # inputs = inputs.to('cuda:0')
 
         
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                **cfg.model.evaluation_params,
-                pad_token_id=tokenizer.pad_token_id,
-                bos_token_id=tokenizer.bos_token_id,
-                eos_token_id=tokenizer.eos_token_id,
-                bad_words_ids=[[tokenizer.unk_token_id]]
-                )
+        # with torch.no_grad():
+        #     outputs = model.generate(
+        #         **inputs,
+        #         **cfg.model.evaluation_params,
+        #         pad_token_id=tokenizer.pad_token_id,
+        #         bos_token_id=tokenizer.bos_token_id,
+        #         eos_token_id=tokenizer.eos_token_id,
+        #         bad_words_ids=[[tokenizer.unk_token_id]]
+        #         )
             
-        # convert to confidence
-        sequences_scores = outputs.sequences_scores.detach().cpu().numpy()
-        confidences = np.exp(sequences_scores)
+        # # convert to confidence
+        # sequences_scores = outputs.sequences_scores.detach().cpu().numpy()
+        # confidences = np.exp(sequences_scores)
 
-        # get generated part of the output
-        sequences = tokenizer.batch_decode(outputs['sequences'])
-        for s in range(len(sequences)):
-            try:
-                model_ans = re.findall("\? 答えは「(.*?)」", sequences[s])[-1]
-            except IndexError:
-                model_ans = "!!! " + sequences[s]
-            sequences[s] = model_ans
-        generated_answers = sequences
+        # # get generated part of the output
+        # sequences = tokenizer.batch_decode(outputs['sequences'])
+        # for s in range(len(sequences)):
+        #     try:
+        #         model_ans = re.findall("\? 答えは「(.*?)」", sequences[s])[-1]
+        #     except IndexError:
+        #         model_ans = "!!! " + sequences[s]
+        #     sequences[s] = model_ans
+        # generated_answers = sequences
 
         df_tmp = pd.DataFrame({
             'qid': list(qid),
             'position': list(np.array(position)),
-            'question': list(question),
-            'prediction': generated_answers,
-            'confidence': confidences,
+            'question': list(questions),
+            'prediction': inference_result['prediction'],
+            'confidence': inference_result['confidence'],
         })
+        generated_answers_dfs.append(df_tmp)
 
-        generated_answers_df = pd.concat([generated_answers_df, df_tmp], axis=0)
+    generated_answers_df = pd.concat(generated_answers_dfs, axis=0)
     
     return generated_answers_df
 

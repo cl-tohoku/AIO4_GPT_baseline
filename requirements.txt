@@ -6,3 +6,6 @@ pandas
 sentencepiece
 pandarallel
 matplotlib
+signate
+uvicorn
+fastapi

@@ -3,3 +3,4 @@ phase: dev_unlabeled
 seed: 42
 dev_unlabeled_path: datasets/aio4_v1.0/aio_04_dev_unlabeled_v1.0_processed.jsonl
 test_path: datasets/aio4_v1.0/aio_04_test_lb_unlabeled_v1.0_processed.jsonl
+test_lb_unlabeled_path: datasets/aio4_v1.0/aio_04_test_lb_unlabeled_v1.0_processed.jsonl
