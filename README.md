@@ -36,7 +36,7 @@
    ```
 3. しきい値探し
    ```
-   python find_threshold.py --prediction_file outputs/{date}/{time}/train.jsonl --gold_file datasets/aio2/aio_02_train_4000.jsonl --limit_num_wrong_answers 3
+   python modules/find_threshold.py --prediction_file outputs/{date}/{time}/train.jsonl --gold_file datasets/aio2/aio_02_train_4000.jsonl --limit_num_wrong_answers 3
    ```
 
 ### 1.3. しきい値探し結果
