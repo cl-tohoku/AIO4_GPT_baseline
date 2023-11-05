@@ -10,7 +10,7 @@ outputs/*/*
 .nfs*
 
 !outputs/2023-11-03/
-!outputs/2023-11-03/17-43-53/
+!outputs/2023-11-03/17-43-52/
 
 # # rinna-1b train
 # !outputs/2023-07-05/ 
