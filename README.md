@@ -91,6 +91,12 @@
    cp outputs/{date}/{time}/test_lb_unlabeled_cleaned.jsonl outputs/{date}/{time}/test_lb_unlabeled_cleaned.txt
    ```
 
+
+#### 1.4.3. 投稿
+```
+signate submit -c 1235 {ファイルパス}
+```
+
 <!-- #### 1.4.3. 結果
 | model | threshold | accuracy score | position score | total score|
 | -  | -| -| -|  -- |
@@ -114,7 +120,7 @@
 | dataset                    | str   | aio4_v1.0 (default) <br> aio2_v1.0   |
 
 
-### 2.3. 最終評価用Dockerテスト
+### 2.2. 最終評価用Dockerテスト
 - ビルド
   ```
   docker build -t aio4-gpt-baseline .
